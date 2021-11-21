@@ -23,9 +23,7 @@ public class HBaseService {
 
     @Autowired
     private UserVectorService userVectorService;
-    /**
-     * 管理员可以做表以及数据的增删改查功能
-     */
+
     private Admin admin = null;
     private Connection connection = null;
     public HBaseService() {
@@ -33,21 +31,17 @@ public class HBaseService {
             connection = ConnectionFactory.createConnection(HBaseConfiguration.create());
             admin = connection.getAdmin();
         } catch (IOException e) {
-            log.error("获取HBase连接失败!");
+            log.error("Error connecting Hbase!");
         }
     }
-    /**
-     * 创建表 create <table>, {NAME => <column family>, VERSIONS => <VERSIONS>}
-     */
+
     public boolean creatTable(String tableName, List<String> columnFamily) {
         try {
-            //列族column family
             List<ColumnFamilyDescriptor> cfDesc = new ArrayList<>(columnFamily.size());
             columnFamily.forEach(cf -> {
                 cfDesc.add(ColumnFamilyDescriptorBuilder.newBuilder(
                         Bytes.toBytes(cf)).build());
             });
-            //表 table
             TableDescriptor tableDesc = TableDescriptorBuilder
                     .newBuilder(TableName.valueOf(tableName))
                     .setColumnFamilies(cfDesc).build();
@@ -58,16 +52,14 @@ public class HBaseService {
                 log.debug("create table Success!");
             }
         } catch (IOException e) {
-            log.error(MessageFormat.format("创建表{0}失败", tableName), e);
+            log.error(MessageFormat.format("Creating table {0} fail", tableName), e);
             return false;
         } finally {
             close(admin, null, null);
         }
         return true;
     }
-    /**
-     * 查询所有表的表名
-     */
+
     public List<String> getAllTableNames() {
         List<String> result = new ArrayList<>();
         try {
@@ -76,44 +68,34 @@ public class HBaseService {
                 result.add(tableName.getNameAsString());
             }
         } catch (IOException e) {
-            log.error("获取所有表的表名失败", e);
+            log.error("Getting all tables' names fail", e);
         } finally {
             close(admin, null, null);
         }
         return result;
     }
-    /**
-     * 遍历查询指定表中的所有数据
-     */
+
     public Map<String, Map<String, String>> getResultScanner(String tableName) {
         Scan scan = new Scan();
         return this.queryData(tableName, scan);
     }
-    /**
-     * 通过表名及过滤条件查询数据
-     */
+
     private Map<String, Map<String, String>> queryData(String tableName, Scan scan) {
-        // <rowKey,对应的行数据>
         Map<String, Map<String, String>> result = new HashMap<>();
         ResultScanner rs = null;
-        //获取表
         Table table = null;
         try {
             table = getTable(tableName);
             rs = table.getScanner(scan);
             for (Result r : rs) {
-                // 每一行数据
                 Map<String, String> columnMap = new HashMap<>();
                 String rowKey = null;
-                // 行键，列族和列限定符一起确定一个单元（Cell）
                 for (Cell cell : r.listCells()) {
                     if (rowKey == null) {
                         rowKey = Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
                     }
                     columnMap.put(
-                            //列限定符
                             Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()),
-                            //列族
                             Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
                 }
                 if (rowKey != null) {
@@ -121,7 +103,7 @@ public class HBaseService {
                 }
             }
         } catch (IOException e) {
-            log.error(MessageFormat.format("遍历查询指定表中的所有数据失败,tableName:{0}", tableName), e);
+            log.error(MessageFormat.format("Getting all data in table failed, tableName:{0}", tableName), e);
         } finally {
             close(null, rs, table);
         }
@@ -138,23 +120,20 @@ public class HBaseService {
             Result result = table.get(get);
             res = result.listCells().stream().findAny().map(cell -> Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength())).orElse("");
         } catch (Exception e) {
-            log.error(MessageFormat.format("查询数据失败,tableName:{0},rowKey:{1}", tableName, rowKey), e);
+            log.error(MessageFormat.format("search by row key and column fail, tableName:{0}, rowKey:{1}", tableName, rowKey), e);
         } finally {
             close(null, null, table);
         }
         return res;
     }
 
-    /**
-     * 为表添加或者更新数据
-     */
     public void putData(String tableName, String rowKey, String familyName, String[] columns, String[] values) {
         Table table = null;
         try {
             table = getTable(tableName);
             putData(table, rowKey, tableName, familyName, columns, values);
         } catch (Exception e) {
-            log.error(MessageFormat.format("为表添加 or 更新数据失败,tableName:{0},rowKey:{1},familyName:{2}", tableName, rowKey, familyName), e);
+            log.error(MessageFormat.format("Adding or updating data in table fail, tableName:{0}, rowKey:{1}, familyName:{2}", tableName, rowKey, familyName), e);
         } finally {
             close(null, null, table);
         }
@@ -169,7 +148,7 @@ public class HBaseService {
                         put.addColumn(Bytes.toBytes(familyName), Bytes.toBytes(columns[i]), Bytes.toBytes(values[i]));
                     } else {
                         throw new NullPointerException(MessageFormat.format(
-                                "列名和列数据都不能为空,column:{0},value:{1}", columns[i], values[i]));
+                                "column name and data cannot be empty, column:{0}, value:{1}", columns[i], values[i]));
                     }
                 }
             }
@@ -178,7 +157,7 @@ public class HBaseService {
             table.close();
         } catch (Exception e) {
             log.error(MessageFormat.format(
-                    "为表添加 or 更新数据失败,tableName:{0},rowKey:{1},familyName:{2}",
+                    "putting data in table failed, tableName:{0}, rowKey:{1}, familyName:{2}",
                     tableName, rowKey, familyName), e);
         }
     }
@@ -197,7 +176,7 @@ public class HBaseService {
             try {
                 admin.close();
             } catch (IOException e) {
-                log.error("关闭Admin失败", e);
+                log.error("Closing admin failed", e);
             }
             if (rs != null) {
                 rs.close();
@@ -209,7 +188,7 @@ public class HBaseService {
                 try {
                     table.close();
                 } catch (IOException e) {
-                    log.error("关闭Table失败", e);
+                    log.error("Closing table failed", e);
                 }
             }
         }

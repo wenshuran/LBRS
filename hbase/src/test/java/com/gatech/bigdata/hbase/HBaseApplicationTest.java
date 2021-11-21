@@ -57,7 +57,7 @@ public class HBaseApplicationTest {
     public void testGetResultScanner() {
 //        Map<String, Map<String, String>> result2 = hbaseService.getResultScanner("test_base");
         Map<String, Map<String, String>> result2 = userServiceProvider.test();
-        System.out.println("-----遍历查询全表内容-----");
+        System.out.println("-----Traversing table-----");
         result2.forEach((k, value) -> {
             System.out.println(k + "--->" + value);
         });

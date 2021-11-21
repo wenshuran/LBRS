@@ -46,27 +46,22 @@ class HTTPServer(object):
         """
         处理客户端请求
         """
-        # 获取客户端请求数据
         request_data = client_socket.recv(1024)
         print("request data:", request_data)
         request_lines = request_data.splitlines()
-        # 解析请求报文
+
         request_start_line = request_lines[0]
-        # 提取用户请求的文件名
         userVector = json.loads("[[" + request_start_line.decode("utf-8").split("=")[1].split(" H")[0] + "]]")
         res = self.generate_recommendation(userVector)
 
-        # 构造响应数据
         response_start_line = "HTTP/1.1 200 OK\r\n"
         response_headers = "Server: My server\r\n"
 
         response = response_start_line + response_headers + "\r\n" + str(res)
         print("response data:", response)
 
-        # 向客户端返回响应数据
         client_socket.send(bytes(response, "utf-8"))
 
-        # 关闭客户端连接
         client_socket.close()
 
     def bind(self, port):
