@@ -80,7 +80,9 @@ public class UserServiceProvider implements UserService {
             generateRequestParameters("http", "127.0.0.1:8005", uriMap),
             String.class
         );
-        return JSON.parseArray(responseEntity.getBody(), String.class);
+        String response = responseEntity.getBody();
+        hBaseService.putData("big_data", userId, "a", new String[]{Long.toString(System.currentTimeMillis())}, new String[]{response});
+        return JSON.parseArray(response, String.class);
     }
 
     private String generateRequestParameters(String protocol, String uri, Map<String, String> params) {
